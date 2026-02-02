@@ -6,18 +6,8 @@ const gameOverPopup = document.getElementById("gameOverPopup");
 const finalScoreEl = document.getElementById("finalScore");
 const restartBtn = document.getElementById("restartBtn");
 
-// --- CANVAS RESIZE ---
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  player.groundY = canvas.height - player.height - 40;
-  player.y = player.groundY;
-
-  obstacles.forEach(o => o.y = canvas.height - o.height - 40);
-}
-
-window.addEventListener("resize", resizeCanvas);
+// --- GAME STATE ---
+let gameRunning = true;
 
 // --- LOAD IMAGES ---
 const playerImg = new Image();
@@ -36,8 +26,8 @@ const player = {
   width: 120,
   height: 120,
   velocityY: 0,
-  gravity: 0.9,      // for longer jump
-  jumpStrength: 30,  // high jump
+  gravity: 1.2,        // smooth gravity
+  jumpStrength: 28,    // high jump
   isJumping: false,
   groundY: 0,
   img: playerImg
@@ -45,13 +35,13 @@ const player = {
 
 // --- OBSTACLES ---
 let obstacles = [];
-const obstacleFrequency = 1500;
+const obstacleFrequency = 1800; // slower spawn
 let lastObstacleTime = 0;
 
 // --- SCORE ---
 let score = 0;
 
-// --- JUMP SOUNDS ---
+// --- JUMP SOUNDS (one after another) ---
 const jumpSounds = [
   new Audio("jump1.mp3"),
   new Audio("jump2.mp3"),
@@ -59,59 +49,80 @@ const jumpSounds = [
 ];
 let jumpSoundIndex = 0;
 
-// --- JUMP FUNCTION ---
+// --- CANVAS RESIZE ---
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  player.groundY = canvas.height - player.height - 40;
+  player.y = player.groundY;
+
+  obstacles.forEach(o => o.y = canvas.height - o.height - 40);
+}
+window.addEventListener("resize", resizeCanvas);
+
+// --- JUMP ---
 function jump() {
-  if (!player.isJumping) {
+  if (!player.isJumping && gameRunning) {
     player.velocityY = -player.jumpStrength;
     player.isJumping = true;
 
-    jumpSounds[jumpSoundIndex].currentTime = 0;
-    jumpSounds[jumpSoundIndex].play();
-    jumpSoundIndex = (jumpSoundIndex + 1) % jumpSounds.length;
+    // Play jump sound one after another (no overlap)
+    let sound = jumpSounds[jumpSoundIndex];
+    if (sound.paused) {
+      sound.currentTime = 0;
+      sound.play();
+      jumpSoundIndex = (jumpSoundIndex + 1) % jumpSounds.length;
+    }
   }
 }
 
-// --- EVENTS ---
+// --- CONTROLS ---
 document.addEventListener("touchstart", jump);
 document.addEventListener("click", jump);
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") jump();
+});
 
 // --- CREATE OBSTACLE ---
 function createObstacle() {
-  const obsWidth = 120;
-  const obsHeight = 120;
   obstacles.push({
     x: canvas.width,
-    y: canvas.height - obsHeight - 40,
-    width: obsWidth,
-    height: obsHeight,
-    speed: 5
+    y: canvas.height - 120 - 40,
+    width: 120,
+    height: 120,
+    speed: 3   // slower obstacle
   });
 }
 
-// --- SHOW GAME OVER POPUP ---
+// --- SHOW GAME OVER ---
 function showGameOver() {
+  gameRunning = false;
   finalScoreEl.innerText = "Score: " + score;
   gameOverPopup.style.display = "flex";
 }
 
-// --- RESTART GAME ---
+// --- RESTART ---
 restartBtn.addEventListener("click", () => {
   obstacles = [];
   score = 0;
   player.y = player.groundY;
   player.velocityY = 0;
   player.isJumping = false;
+  gameRunning = true;
+  lastObstacleTime = 0;
   gameOverPopup.style.display = "none";
+  requestAnimationFrame(gameLoop);
 });
 
-// --- GAME LOOP ---
+// --- UPDATE GAME ---
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- STATIC BACKGROUND ---
+  // Draw background
   ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
 
-  // --- PLAYER PHYSICS ---
+  // Player physics
   player.velocityY += player.gravity;
   player.y += player.velocityY;
 
@@ -121,33 +132,37 @@ function update() {
     player.isJumping = false;
   }
 
-  // --- DRAW PLAYER ---
+  // Draw player
   ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
 
-  // --- OBSTACLES ---
+  // Draw obstacles
   obstacles.forEach((obs, i) => {
     obs.x -= obs.speed;
     ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height);
 
-    // Collision detection
+    // Collision
     if (
       player.x < obs.x + obs.width &&
       player.x + player.width > obs.x &&
       player.y < obs.y + obs.height &&
       player.y + player.height > obs.y
     ) {
-      showGameOver(); // <-- custom notification
+      showGameOver();
     }
 
+    // Remove obstacles off screen
     if (obs.x + obs.width < 0) obstacles.splice(i, 1);
   });
 
-  // --- SCORE ---
+  // Score
   score++;
   document.getElementById("score").innerText = "Score: " + score;
 }
 
+// --- GAME LOOP ---
 function gameLoop(timestamp) {
+  if (!gameRunning) return;
+
   if (timestamp - lastObstacleTime > obstacleFrequency) {
     createObstacle();
     lastObstacleTime = timestamp;
@@ -157,7 +172,7 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-// --- INITIALIZE ---
+// --- START GAME ---
 window.onload = () => {
   resizeCanvas();
   requestAnimationFrame(gameLoop);
