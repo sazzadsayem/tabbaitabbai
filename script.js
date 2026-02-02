@@ -26,8 +26,8 @@ const player = {
   width: 120,
   height: 120,
   velocityY: 0,
-  gravity: 1.2,        // smooth gravity
-  jumpStrength: 28,    // high jump
+  gravity: 0.8,        // lower gravity → stays longer
+  jumpStrength: 45,    // much higher jump
   isJumping: false,
   groundY: 0,
   img: playerImg
@@ -41,7 +41,7 @@ let lastObstacleTime = 0;
 // --- SCORE ---
 let score = 0;
 
-// --- JUMP SOUNDS (one after another) ---
+// --- JUMP SOUNDS (play one by one) ---
 const jumpSounds = [
   new Audio("jump1.mp3"),
   new Audio("jump2.mp3"),
@@ -67,7 +67,7 @@ function jump() {
     player.velocityY = -player.jumpStrength;
     player.isJumping = true;
 
-    // Play jump sound one after another (no overlap)
+    // Play jump sound (no overlapping)
     let sound = jumpSounds[jumpSoundIndex];
     if (sound.paused) {
       sound.currentTime = 0;
@@ -91,7 +91,7 @@ function createObstacle() {
     y: canvas.height - 120 - 40,
     width: 120,
     height: 120,
-    speed: 3   // slower obstacle
+    speed: 3   // slow obstacle for easy reaction
   });
 }
 
