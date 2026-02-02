@@ -26,8 +26,8 @@ const player = {
   width: 120,
   height: 120,
   velocityY: 0,
-  gravity: 0.8,        // lower gravity → stays longer
-  jumpStrength: 45,    // much higher jump
+  gravity: 1.5,        // proper gravity
+  jumpStrength: 30,    // balanced jump
   isJumping: false,
   groundY: 0,
   img: playerImg
@@ -35,13 +35,13 @@ const player = {
 
 // --- OBSTACLES ---
 let obstacles = [];
-const obstacleFrequency = 1800; // slower spawn
+const obstacleFrequency = 1800; 
 let lastObstacleTime = 0;
 
 // --- SCORE ---
 let score = 0;
 
-// --- JUMP SOUNDS (play one by one) ---
+// --- JUMP SOUNDS ---
 const jumpSounds = [
   new Audio("jump1.mp3"),
   new Audio("jump2.mp3"),
@@ -57,7 +57,9 @@ function resizeCanvas() {
   player.groundY = canvas.height - player.height - 40;
   player.y = player.groundY;
 
-  obstacles.forEach(o => o.y = canvas.height - o.height - 40);
+  obstacles.forEach(o => {
+    o.y = canvas.height - o.height - 40;
+  });
 }
 window.addEventListener("resize", resizeCanvas);
 
@@ -67,7 +69,7 @@ function jump() {
     player.velocityY = -player.jumpStrength;
     player.isJumping = true;
 
-    // Play jump sound (no overlapping)
+    // play jump sound one by one
     let sound = jumpSounds[jumpSoundIndex];
     if (sound.paused) {
       sound.currentTime = 0;
@@ -91,7 +93,7 @@ function createObstacle() {
     y: canvas.height - 120 - 40,
     width: 120,
     height: 120,
-    speed: 3   // slow obstacle for easy reaction
+    speed: 3  // slower obstacle for easier gameplay
   });
 }
 
@@ -126,6 +128,7 @@ function update() {
   player.velocityY += player.gravity;
   player.y += player.velocityY;
 
+  // --- Ground collision fix ---
   if (player.y >= player.groundY) {
     player.y = player.groundY;
     player.velocityY = 0;
@@ -140,7 +143,7 @@ function update() {
     obs.x -= obs.speed;
     ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height);
 
-    // Collision
+    // Collision detection
     if (
       player.x < obs.x + obs.width &&
       player.x + player.width > obs.x &&
@@ -150,7 +153,7 @@ function update() {
       showGameOver();
     }
 
-    // Remove obstacles off screen
+    // Remove obstacles off-screen
     if (obs.x + obs.width < 0) obstacles.splice(i, 1);
   });
 
